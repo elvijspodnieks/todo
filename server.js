@@ -11,7 +11,7 @@ app.use(express.json())
 connectToDB();
 
 // TODO APIS
-app.get("/todos", async (req, res) => {
+app.get("/", async (req, res) => {
     try {
         const result = await Todo.find()
         res.send({
