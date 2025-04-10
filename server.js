@@ -1,54 +1,41 @@
-import express from "express"
-import dotenv from "dotenv"
-import connectToDB from "./database/db.js";
-import { Todo } from "./models/todo.model.js";
-dotenv.config();
+const express = require('express')
+const { errorHandler } = require('./middleware/errorMiddleware')
+const dotenv = require('dotenv').config()
+const port = process.env.PORT || 5000
+const connectDB = require('./database/db')
+const cors = require("cors");
+const http = require("http")
+const { Server } = require("socket.io");
+connectDB();
 const app = express()
-const port = process.env.port || 4000
+
 
 app.use(express.json())
+app.use(express.urlencoded({ extended: false }))
+app.use(cors());
+app.use('/api/goals', require('./routes/goalRoutes'))
+app.use('/api/players', require('./routes/playerRoutes'))
+app.use('/api/results', require('./routes/resultsRoutes'))
+app.use('/api/currentgame', require('./routes/currentGameRoutes'))
+app.use('/api/game', require('./routes/gameRoutes'))
+app.use('/api/tournaments', require('./routes/tournamentRoutes'))
 
-connectToDB();
+app.use(errorHandler)
 
-// TODO APIS
-app.get("/", async (req, res) => {
-    try {
-        const result = await Todo.find()
-        res.send({
-            success: true,
-            message: "Todo Lists Retreied syccess",
-            data: result,
-        })
-    } catch(error) {
-        res.send({
-            success: false,
-            message: "Failed",
-            data: result,
-        })
-    }
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:5000",
+        methods: ["GET", "POST"],
+    },
+});
 
+io.on("connection", (socket) => {
+    console.log(`User Connected: ${socket.id}`);
+
+    socket.on("send_message", (data) => {
+        socket.broadcast.emit("receive_message", data)
+    })
 })
 
-app.post("/create-todo", async (req, res) => {
-    const todoDetails = req.body
-    try {
-        const result = await Todo.create(todoDetails)
-        res.send({
-            success: true,
-            message: "Todo Is Created Successfully",
-            data: result,
-        })
-    } catch(error) {
-        console.log(error)
-        res.send({
-            success: false,
-            message: "Failed",
-            data: result,
-        })
-    }
-
-})
-
-app.listen(4000, () => {
-    console.log(`SERVER is running on port ${port}`)
-})
+server.listen(port, () => console.log(`Server started on port ${port}`))
